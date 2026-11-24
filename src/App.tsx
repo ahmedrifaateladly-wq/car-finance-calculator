@@ -66,10 +66,11 @@ function IdleGuard() {
     const evs = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const;
     evs.forEach((e) => window.addEventListener(e, bump, { passive: true }));
     const limit = (settings?.idle_minutes ?? 30) * 60_000;
+    let fired = false;
     const check = () => {
-      if (!settings) return;
+      if (!settings || fired) return;
       const la = lastActivity();
-      if (la && Date.now() - la > limit) void signOut('تم تسجيل الخروج تلقائياً بعد عدم الاستخدام');
+      if (la && Date.now() - la > limit) { fired = true; void signOut('تم تسجيل الخروج تلقائياً بعد عدم الاستخدام'); }
     };
     if (settings) check(); // enforce immediately after reload, using the saved limit
     const t = setInterval(check, 15_000);

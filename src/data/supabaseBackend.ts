@@ -49,9 +49,13 @@ export class SupabaseBackend implements Backend {
     return !!u?.user && !error;
   }
 
+  private signingOut = false;
+
   onSignedOut(cb: () => void): () => void {
+    // Our own signOut() is awaited by the caller (so server-side revocation completes first);
+    // only unexpected sign-outs (expired/revoked session, other tab) are reported here.
     const { data } = this.sb.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') cb();
+      if (event === 'SIGNED_OUT' && !this.signingOut) cb();
     });
     return () => data.subscription.unsubscribe();
   }
@@ -73,9 +77,16 @@ export class SupabaseBackend implements Backend {
 
   async signOut(): Promise<void> {
     // Revokes this session's refresh token server-side; local storage is cleared even if offline.
-    const { error } = await this.sb.auth.signOut({ scope: 'local' });
-    if (error) {
+    this.signingOut = true;
+    try {
+      const { error } = await this.sb.auth.signOut({ scope: 'local' });
+      if (error) {
+        try { localStorage.removeItem('cfc-auth'); } catch { /* ignore */ }
+      }
+    } catch {
       try { localStorage.removeItem('cfc-auth'); } catch { /* ignore */ }
+    } finally {
+      this.signingOut = false;
     }
   }
 

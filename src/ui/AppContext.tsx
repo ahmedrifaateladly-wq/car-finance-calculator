@@ -94,7 +94,12 @@ export function AppProvider({ backend, onSignedOut, children }: { backend: Backe
     });
   }, []);
 
+  // Requests still in flight when this session ends must not affect a later session.
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+
   const handleErr = useCallback((e: unknown) => {
+    if (!alive.current) return;
     if (e instanceof BackendError && (e.code === 'auth' || e.code === 'denied')) {
       onSignedOut('انتهت الجلسة أو لم تعد صالحة. سجّل الدخول مرة أخرى');
     }

@@ -54,11 +54,15 @@ async function keys() {
 }
 
 function strongPassword() {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-  const b = randomBytes(20);
-  let s = '';
-  for (const x of b) s += alphabet[x % alphabet.length];
-  return `${s.slice(0, 5)}-${s.slice(5, 10)}-${s.slice(10, 15)}-${s.slice(15, 20)}`; // ~114 bits
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'; // 56 symbols, no look-alikes
+  for (;;) {
+    let s = '';
+    while (s.length < 20) {
+      const x = randomBytes(1)[0];
+      if (x < 224) s += alphabet[x % 56]; // rejection sampling: no modulo bias
+    }
+    if (/[A-Za-z]/.test(s) && /\d/.test(s)) return `${s.slice(0, 5)}-${s.slice(5, 10)}-${s.slice(10, 15)}-${s.slice(15, 20)}`; // ~116 bits
+  }
 }
 
 async function migrate() {
@@ -172,7 +176,7 @@ async function verify() {
     const t2 = tok.access_token;
     ok('second user can sign in (test setup)', !!t2);
     for (const t of ['quotes', 'clients', 'tariff_versions', 'user_settings']) {
-      const r = await rest(`${t}?select=id`, { token: t2 });
+      const r = await rest(`${t}?select=${t === 'user_settings' ? 'owner_id' : 'id'}`, { token: t2 });
       const b = await r.text();
       ok(`other user sees no ${t}`, (r.ok && b === '[]') || r.status === 403, `${r.status} ${b.slice(0, 60)}`);
     }
