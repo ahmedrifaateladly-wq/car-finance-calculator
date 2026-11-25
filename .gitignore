@@ -1,9 +1,2 @@
 node_modules/
-dist/
-tests-private/
-*.local
-.env.local
-.env.*.local
-setup-output/
-dist-localtest/
-tsconfig.tsbuildinfo
+.env*
